@@ -1,6 +1,7 @@
 import $ from 'jquery';
 
 import store from './store';
+import api from './api';
 
 const generateItemElement = function (item) {
   let itemTitle = `<span class="shopping-item shopping-item__checked">${item.name}</span>`;
@@ -27,7 +28,7 @@ const generateItemElement = function (item) {
 };
 
 const generateShoppingItemsString = function (shoppingList) {
-  const items = shoppingList.map((item) => generateItemElement(item));
+  const items = shoppingList.map(item => generateItemElement(item));
   return items.join('');
 };
 
@@ -50,8 +51,15 @@ const handleNewItemSubmit = function () {
     event.preventDefault();
     const newItemName = $('.js-shopping-list-entry').val();
     $('.js-shopping-list-entry').val('');
-    store.addItem(newItemName);
-    render();
+    // store.addItem(newItemName);
+    api
+      .createItem(newItemName)
+      .then(res => res.json())
+      .then(newItem => {
+        store.addItem(newItem);
+        render();
+      });
+    // render();
   });
 };
 
@@ -67,6 +75,8 @@ const handleDeleteItemClicked = function () {
     // get the index of the item in store.items
     const id = getItemIdFromElement(event.currentTarget);
     // delete the item
+    console.log(id);
+    api.deleteItem(id);
     store.findAndDelete(id);
     // render the updated shopping list
     render();
@@ -77,7 +87,11 @@ const handleEditShoppingItemSubmit = function () {
   $('.js-shopping-list').on('submit', '.js-edit-item', event => {
     event.preventDefault();
     const id = getItemIdFromElement(event.currentTarget);
-    const itemName = $(event.currentTarget).find('.shopping-item').val();
+    const itemName = $(event.currentTarget)
+      .find('.shopping-item')
+      .val();
+    api.updateItem(id, { name: itemName });
+    store.findAndUpdate(id, { name: itemName });
     store.findAndUpdateName(id, itemName);
     render();
   });
@@ -86,8 +100,11 @@ const handleEditShoppingItemSubmit = function () {
 const handleItemCheckClicked = function () {
   $('.js-shopping-list').on('click', '.js-item-toggle', event => {
     const id = getItemIdFromElement(event.currentTarget);
-    store.findAndToggleChecked(id);
-    render();
+    const item = store.findById(id);
+    api.updateItem(id, { checked: !item.checked }).then(() => {
+      store.findAndUpdate(id, { checked: !item.checked });
+      render();
+    });
   });
 };
 
